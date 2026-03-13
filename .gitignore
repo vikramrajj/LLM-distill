@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.gguf
+*.jsonl
+trace_*.json
+.env
+nohup.out
