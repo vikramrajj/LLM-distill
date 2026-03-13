@@ -9,6 +9,7 @@ The agent follows this pattern:
 
 import re
 import json
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -17,34 +18,12 @@ from tools.base import ToolRegistry
 from tools.builtin import create_default_registry
 
 
-# System prompt optimized for small models (Phi-3.5)
-AGENT_SYSTEM_PROMPT = """You are a helpful AI assistant that can use tools to complete tasks.
+# System prompt: loaded from program.md + tool definitions
+AGENT_SYSTEM_PROMPT = """{program_instructions}
+
+## Available Tools
 
 {tool_prompt}
-
-## Rules
-
-1. You can ONLY use ONE tool per response
-2. After using a tool, STOP and wait for the result
-3. Do NOT write FINAL: in the same message as a tool call
-4. After seeing tool results, you may use another tool or give your final answer
-5. Start your final answer with "FINAL:"
-
-## Example
-
-User: What files are in the current directory?
-
-I need to list the files first.
-
-```tool
-tool_name: list_files
-args: {{"path": "."}}
-```
-
-[system returns tool result]
-
-Now I can summarize. The directory contains:
-FINAL: The directory has 3 files: README.md, config.py, and data.txt.
 """
 
 
@@ -100,7 +79,15 @@ class Agent:
         self.verbose = verbose
 
     def _build_system_prompt(self) -> str:
-        return AGENT_SYSTEM_PROMPT.format(tool_prompt=self.tools.get_tool_prompt())
+        # Load instructions from program.md (Karpathy autoresearch pattern)
+        program_path = Path(__file__).parent.parent / "program.md"
+        program_instructions = ""
+        if program_path.exists():
+            program_instructions = program_path.read_text()
+        return AGENT_SYSTEM_PROMPT.format(
+            program_instructions=program_instructions,
+            tool_prompt=self.tools.get_tool_prompt(),
+        )
 
     def _parse_tool_call(self, text: str) -> Optional[tuple[str, dict]]:
         """Parse a tool call block from the LLM response."""
